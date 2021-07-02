@@ -178,3 +178,18 @@ npm i webpack-dev-server
   }
 ```
 ##### 热更新原理
+- webpack complier :将js编译成Bundle
+- HMR server:将热更新的模块输送给HMR runtime
+- Bundle Server：提供文件在浏览器访问
+- HMR runtime：会被注入到浏览器的bundle文件中，更新文件的变化
+
+##### 文件指纹
+- Hash：和整个项目的构建相关，只要项目文件有修改，整个项目构建的hash值就会改变
+- ChunkHash：和webpack打包的chunk有关系，不同的entry会生成不同的chunkHash值
+- ContentHash:根据文件内容定义的Hash,只要内容改变就会生成一个新的值
+
+##### 代码压缩
+- html: html-webpack-plugin
+- css: optimize-css-assets-webpack-plugin cssnano
+- js : 内置了 uglifyjs-webpack-plugin
+

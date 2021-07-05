@@ -193,3 +193,270 @@ npm i webpack-dev-server
 - css: optimize-css-assets-webpack-plugin cssnano
 - js : 内置了 uglifyjs-webpack-plugin
 
+
+
+## 进阶篇
+
+### 清理构建目录
+
+npm i clean-webpack-plugin -d
+
+### css兼容处理 (注意版本)
+
+npm i autoprefixer postcss-loader -d
+
+- package.json添加浏览器兼容列表
+
+```
+ "browserslist": [
+    "Firefox > 20",
+    "iOS >= 7",
+    "ie >= 8",
+    "last 5 versions",
+    "> 5%"
+  ],
+```
+- 配置
+```
+{
+  test:/\.less$/,
+  use:[
+    MiniCssExtractPlugin.loader,
+    'css-loader',
+    'less-loader',
+    {
+      loader: "postcss-loader",
+      options: {
+        postcssOptions:{
+          plugins:[
+            require('autoprefixer')
+          ]
+        }
+        
+      }
+    }
+  ]
+}
+```
+### rem单位处理
+> rem 相对于页面根元素
+npm i px2rem-loader -d
+npm i lib-flexible -s
+
+
+### 资源内联
+- 代码层面
+    - 页面框架的初始化脚本
+    - 上报打点
+    - css内联避免闪动
+- 请求层面：减少http网络请求
+    - 小图片或者小字体内联（url-loader）
+
+#### css内联
+- 借助style-loader
+- html-inline-css-webpack-plugin 将打包好的css资源文件插入到js中
+#### html js内联
+- npm i raw-loader@0.5.1
+·设置之后未成功，待修改·
+```
+ <script>${require('raw-loader!babel-loader!./meta.html')}</script>
+  <script>${require('raw-loader!babel-loader!../node_modules/lib-flexible')}</script>
+```
+
+### 多页面打包
+
+利用glob.sync
+
+```
+const setMPA = ()=>{
+  const entry ={};
+  const htmlWebpackPlugins =[]
+  const entryPaths = glob.sync(path.join(__dirname,'src/pages/*/index.js'))
+  entryPaths.map(entryPath=>{
+    const match = entryPath.match(/pages\/(.*)\/index\.js/)
+    const pathName = match && match[1]
+    entry[pathName] = entryPath
+    
+    htmlWebpackPlugins.push(
+      new HtmlWebpackPlugin({
+        template:path.resolve(__dirname,`./src/pages/${pathName}/index.html`),
+        filename:`${pathName}.html`,
+        chunks:[pathName]
+      })
+    )
+  })
+  return {
+    entry,
+    htmlWebpackPlugins
+  }
+}
+const {entry,htmlWebpackPlugins} = setMPA()
+```
+
+### source map
+> 作用：通过source map定位到源代码，一般是开发环境开启，线上环境关闭，线上排查问题的时候可以将sourcemap上传到错误监控系统
+#### 类型
+https://webpack.js.org/configuration/devtool/
+
+### 提取公共资源
+
+#### 基础库分离
+- 使用html-webpack-externals-plugin ,在页面中引入cdn资源
+  ```
+    new HtmlWebpackExternalsPlugin({
+      externals:[
+        {
+          module:'react',
+          entry:'https://unpkg.com/react@17/umd/react.development.js',
+          global:'React'
+        },
+        {
+          module:'react-dom',
+          entry:'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
+          global:'ReactDOM'
+        }
+      ]
+    })
+  ```
+- splitChunksPlugins webpack4内置，代替了CommonsChunkPlugin
+提取公共第三方包
+文档：https://webpack.docschina.org/plugins/split-chunks-plugin/
+
+  ```
+   optimization:{
+    splitChunks:{
+      cacheGroups:{
+        commons:{
+          test:/(react|react-dom)/,
+          name:'venders',
+          chunks:'all'
+        }
+      }
+    }
+  }
+  ```
+  提取公共文件
+  ```
+   commons:{
+      name:"common",
+      chunks:'all',
+      minChunks:2
+    }
+  ```
+
+### tree-shaking摇树优化
+#### DCE (Elimination 消除)
+- 代码不会被执行，不可到达
+- 代码执行的结果不会被用到
+- 代码只会影响死变量（只读不写）
+#### tree-shaking原理（mode为production默认开启）
+- 利用ES6模块的特点 `待深入了解`
+    - 只能作为模块顶层的语句出现（编译式静态分析）
+    - import 的模块只能是字符串常量 
+    - import binding的是immutable的
+- 代码擦除：uglify阶段删除无用代码
+
+### scope hosting 的使用和原理
+现象：构建后的代码存在大量的闭包
+导致：代码体检变大、运行代码时创建的函数作用域变多内存开销变大
+原理：将所有模块的代码按照引用顺序放在一个函数作用域里，然后适当的重命名变量，减少函数声明代码和内存开销
+
+未开启前bundle文件
+```
+[
+/* 0 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _common_index__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
+/* harmony import */ var _hello__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(2);
+console.log(_common_index__WEBPACK_IMPORTED_MODULE_0__["default"]);
+Object(_hello__WEBPACK_IMPORTED_MODULE_1__["default"])();
+
+/***/ }),
+/* 1 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+var name = "sss";
+/* harmony default export */ __webpack_exports__["default"] = (name);
+
+/***/ }),
+/* 2 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+function hello() {
+  console.log('hello');
+}
+
+/* harmony default export */ __webpack_exports__["default"] = (hello);
+
+/***/ })
+/******/ 
+```
+开启之后
+```
+{
+
+/***/ 0:
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+var name = "sss";
+/* harmony default export */ __webpack_exports__["default"] = (name);
+
+/***/ }),
+
+/***/ 12:
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+// ESM COMPAT FLAG
+__webpack_require__.r(__webpack_exports__);
+
+// EXTERNAL MODULE: ./src/common/index.js
+var common = __webpack_require__(0);
+
+// CONCATENATED MODULE: ./src/pages/home/hello.js
+function hello() {
+  console.log('hello');
+}
+
+/* harmony default export */ var home_hello = (hello);
+// CONCATENATED MODULE: ./src/pages/home/index.js
+
+
+console.log(common["default"]);
+home_hello();
+
+/***/ })
+```
+
+### 代码分割
+
+#### 场景
+- 抽离共享模块
+- 懒加载
+
+#### 懒加载js脚本的方式
+- CommonJS ：require.ensure
+- ES6:动态import（需要babel转换）
+
+```
+ npm install --save-dev @babel/plugin-syntax-dynamic-import
+```
+.babelrc配置
+```
+  "plugins": [
+    "@babel/plugin-syntax-dynamic-import"
+  ]
+```
+通过jsonp的方式动态
+
+
+

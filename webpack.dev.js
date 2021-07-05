@@ -1,6 +1,8 @@
 
 const path = require('path')
 const webpack = require('webpack')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+
 const config ={
   mode:"development",
   entry:{
@@ -38,7 +40,9 @@ const config ={
     ]
   },
   plugins:[
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin(),
+    new CleanWebpackPlugin()
+
   ],
   devServer:{
     hot:true,

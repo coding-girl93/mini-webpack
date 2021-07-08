@@ -5,6 +5,8 @@ import ReactDOM from 'react-dom'
 import './index.less'
 import name from '../../common/index'
 console.log(name)
+import add from 'mini-npm-demo'
+console.log(add(1,23))
 class Demo extends Component{
   load =()=>{
     import('./hello.js').then(res=>{

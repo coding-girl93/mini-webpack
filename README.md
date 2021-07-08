@@ -458,5 +458,63 @@ home_hello();
 ```
 通过jsonp的方式动态
 
+### ESLint规范
 
+业界规范：
+
+npm i eslint-config-airbnb
+npm i eslint-config-airbnb-base
+
+制定团队ESLint规范
+
+#### 落地方案
+
+- CI/CD系统集成
+- webpack集成
+
+### 打包组件库
+支持 ESM、CJS、AMD 
+
+```
+const TerserPlugin = require('terser-webpack-plugin')
+
+module.exports ={
+  entry:{
+    'add':'./src/index.js',
+    'add.min':'./src/index.js'
+  },
+  output:{
+    filename:'[name].js',
+    library:'add', // 库名字
+    libraryExport:'default', 
+    libraryTarget:'umd' // 通用打包模式
+  },
+  mode:'none',
+  optimization:{
+    minimize:true,
+    minimizer:[
+      new TerserPlugin({
+        include:/\.min\.js$/
+      })
+    ]
+  }
+}
+
+```
+
+
+### SSR 服务端渲染
+
+浏览器渲染：html,js,css加载，渲染页面
+服务器渲染：直出页面，减少了请求
+
+#### 优势：
+- 减少白屏
+- seo友好
+#### 实现
+服务端：
+- 使用react-dom/server的renderToString方法将React组件渲染成字符串
+- 服务端路由返回对应的模板
+客户端
+- 打包出针对服务端的组件
 
